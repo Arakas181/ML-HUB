@@ -1,23 +1,3 @@
-<?php
-require_once 'config.php';
-
-// Redirect if already logged in
-if (isLoggedIn()) {
-    $role = getUserRole();
-    switch ($role) {
-        case 'admin':
-        case 'super_admin':
-            header('Location: admin_dashboard.php');
-            break;
-        case 'squad_leader':
-            header('Location: squad_leader_dashboard.php');
-            break;
-        default:
-            header('Location: user_dashboard.php');
-    }
-    exit();
-}
-?>
 <!DOCTYPE html>
 <html lang="en">
 <head>

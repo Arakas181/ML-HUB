@@ -1,18 +1,14 @@
 <?php
+session_start();
 require_once 'config.php';
 
-// Fetch notices (admin announcements) and content from database
+// Check if user is logged in
+$isLoggedIn = isset($_SESSION['user_id']);
+$userRole = $isLoggedIn ? $_SESSION['role'] : 'user';
+$username = $isLoggedIn ? $_SESSION['username'] : '';
+
+// Fetch news and guides from database
 try {
-    // Get notices from admin announcements
-    $notices = $pdo->query("
-        SELECT n.*, u.username as author_name 
-        FROM notices n 
-        JOIN users u ON n.author_id = u.id 
-        WHERE n.status = 'published'
-        ORDER BY n.created_at DESC
-    ")->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Get published news content
     $news = $pdo->query("
         SELECT c.*, u.username as author_name 
         FROM content c 
@@ -30,7 +26,6 @@ try {
     ")->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log("Database error: " . $e->getMessage());
-    $notices = [];
     $news = [];
     $guides = [];
 }
@@ -350,16 +345,22 @@ try {
                     </li>
                 </ul>
                 <div class="d-flex align-items-center">
-                    <?php if (isLoggedIn()): ?>
-                        <span class="navbar-text me-3">
-                            <i class="fas fa-user me-1"></i>Welcome, <?php echo htmlspecialchars(getUsername()); ?>
-                            <?php if (getUserRole() === 'admin' || getUserRole() === 'super_admin'): ?>
-                                <i class="fas fa-shield-alt ms-1 text-warning" title="Admin"></i>
-                            <?php elseif (getUserRole() === 'squad_leader'): ?>
-                                <i class="fas fa-crown ms-1 text-warning" title="Squad Leader"></i>
-                            <?php endif; ?>
-                        </span>
-                        <a href="logout.php" class="btn btn-outline-light">Logout</a>
+                    <?php if ($isLoggedIn): ?>
+                        <div class="dropdown">
+                            <a class="btn btn-outline-light dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-user me-1"></i> <?php echo htmlspecialchars($username); ?>
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="profile.php">Profile</a></li>
+                                <?php if ($userRole === 'admin' || $userRole === 'super_admin'): ?>
+                                    <li><a class="dropdown-item" href="admin_dashboard.php">Admin Dashboard</a></li>
+                                <?php elseif ($userRole === 'user'): ?>
+                                    <li><a class="dropdown-item" href="user_dashboard.php">User Dashboard</a></li>
+                                <?php endif; ?>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="logout.php">Logout</a></li>
+                            </ul>
+                        </div>
                     <?php else: ?>
                         <a href="login.php" class="btn btn-outline-light me-2">Login</a>
                         <a href="register.php" class="btn btn-primary">Register</a>
@@ -379,36 +380,6 @@ try {
 
     <!-- Main Content -->
     <div class="container mt-5">
-        <!-- Admin Notices Section -->
-        <?php if (!empty($notices)): ?>
-        <div class="row mb-5">
-            <div class="col-12">
-                <h2 class="mb-4"><i class="fas fa-bullhorn me-2"></i>Latest Announcements</h2>
-            </div>
-            <?php foreach ($notices as $notice): ?>
-                <div class="col-lg-6 col-md-12 mb-4">
-                    <div class="card border-warning">
-                        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i><?php echo htmlspecialchars($notice['title']); ?></h5>
-                            <small><i class="fas fa-shield-alt me-1"></i>Admin</small>
-                        </div>
-                        <div class="card-body">
-                            <p class="card-text"><?php echo nl2br(htmlspecialchars($notice['content'])); ?></p>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <small class="text-muted">
-                                    <i class="fas fa-user me-1"></i><?php echo htmlspecialchars($notice['author_name']); ?>
-                                </small>
-                                <small class="text-muted">
-                                    <i class="fas fa-calendar me-1"></i><?php echo date('M d, Y H:i', strtotime($notice['created_at'])); ?>
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
-
         <!-- News Section -->
         <div class="row mb-5">
             <div class="col-12">

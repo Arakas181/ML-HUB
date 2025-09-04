@@ -329,7 +329,7 @@ try {
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="manage_matches.php">
+                            <a class="nav-link" href="matches.php">
                                 <i class="fas fa-gamepad"></i> Matches
                             </a>
                         </li>
@@ -346,11 +346,6 @@ try {
                         <li class="nav-item">
                             <a class="nav-link" href="my_matches.php">
                                 <i class="fas fa-history"></i> Match History
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="manage_matches.php">
-                                <i class="fas fa-video"></i> Watch Matches
                             </a>
                         </li>
                         <li class="nav-item">

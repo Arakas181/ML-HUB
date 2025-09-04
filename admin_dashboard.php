@@ -1,8 +1,9 @@
 <?php
+session_start();
 require_once 'config.php';
 
 // Check if user is logged in and has admin role
-if (!isLoggedIn() || (getUserRole() !== 'admin' && getUserRole() !== 'super_admin')) {
+if (!isset($_SESSION['user_id']) || ($_SESSION['role'] !== 'admin' && $_SESSION['role'] !== 'super_admin')) {
     header('Location: admin_login.php');
     exit();
 }
@@ -362,13 +363,7 @@ try {
                     <li class="nav-item">
                         <a class="nav-link" href="manage_matches.php">
                             <i class="fas fa-gamepad me-2"></i>
-                            Manage Matches
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="manage_matches.php">
-                            <i class="fas fa-video me-2"></i>
-                            Watch Matches
+                            Matches
                         </a>
                     </li>
                     <li class="nav-item">
@@ -380,12 +375,6 @@ try {
                     <li class="nav-item">
                         <a class="nav-link" href="manage_squads.php">
                             <i class="fas fa-users me-2"></i> Manage Squads
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="manage_polls.php">
-                            <i class="fas fa-poll-h me-2"></i>
-                            Live Polls
                         </a>
                     </li>
                     <li class="nav-item">
@@ -502,11 +491,6 @@ try {
                                     <div class="col-lg-4 col-md-12 col-sm-12 mb-3">
                                         <a href="manage_tournaments.php" class="btn btn-primary w-100">
                                             <i class="fas fa-trophy me-2"></i>Create Tournament
-                                        </a>
-                                    </div>
-                                    <div class="col-lg-4 col-md-6 col-sm-12 mb-3">
-                                        <a href="manage_polls.php" class="btn btn-primary w-100">
-                                            <i class="fas fa-poll-h me-2"></i>Manage Polls
                                         </a>
                                     </div>
                                 </div>

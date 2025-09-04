@@ -1,5 +1,11 @@
 <?php
+session_start();
 require_once 'config.php';
+
+// Check if user is logged in
+$isLoggedIn = isset($_SESSION['user_id']);
+$userRole = $isLoggedIn ? $_SESSION['role'] : 'user';
+$username = $isLoggedIn ? $_SESSION['username'] : '';
 
 // Ensure video_url column exists in matches table
 $hasVideoUrlColumn = false;
@@ -15,39 +21,15 @@ try {
     }
 }
 
-// Convert YouTube URL to embed URL - moved from watch.php
-function getYouTubeEmbedUrl($url) {
-    if (empty($url)) return null;
-    
-    $patterns = [
-        '/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/',
-        '/youtu\.be\/([a-zA-Z0-9_-]+)/',
-        '/youtube\.com\/embed\/([a-zA-Z0-9_-]+)/'
-    ];
-    
-    foreach ($patterns as $pattern) {
-        if (preg_match($pattern, $url, $matches)) {
-            return 'https://www.youtube.com/embed/' . $matches[1];
-        }
-    }
-    
-    return null;
-}
-
 // Get filter parameters
 $status = $_GET['status'] ?? '';
 $tournament = $_GET['tournament'] ?? '';
 $search = $_GET['search'] ?? '';
 
 try {
-    // Build query based on filters - focus on matches with videos
+    // Build query based on filters
     $whereConditions = [];
     $params = [];
-    
-    // Only show matches with video recordings by default for card view
-    if ($hasVideoUrlColumn) {
-        $whereConditions[] = "m.video_url IS NOT NULL AND m.video_url != ''";
-    }
     
     if ($status) {
         $whereConditions[] = "m.status = ?";
@@ -60,9 +42,8 @@ try {
     }
     
     if ($search) {
-        $whereConditions[] = "(t1.name LIKE ? OR t2.name LIKE ? OR t.name LIKE ? OR m.round LIKE ?)";
+        $whereConditions[] = "(t1.name LIKE ? OR t2.name LIKE ? OR t.name LIKE ?)";
         $searchTerm = "%$search%";
-        $params[] = $searchTerm;
         $params[] = $searchTerm;
         $params[] = $searchTerm;
         $params[] = $searchTerm;
@@ -89,34 +70,12 @@ try {
     $stmt->execute($params);
     $matches = $stmt->fetchAll();
     
-    // Get ALL matches for table view (without video filter)
-    $allMatchesQuery = "
-        SELECT m.id, m.tournament_id, m.team1_id, m.team2_id, m.scheduled_time, 
-               m.status, m.score_team1, m.score_team2, m.round, m.created_at" .
-               ($hasVideoUrlColumn ? ", m.video_url" : "") . ",
-               t1.name as team1_name, t2.name as team2_name, t.name as tournament_name,
-               t1.logo_url as team1_logo, t2.logo_url as team2_logo
-        FROM matches m
-        JOIN teams t1 ON m.team1_id = t1.id
-        JOIN teams t2 ON m.team2_id = t2.id
-        JOIN tournaments t ON m.tournament_id = t.id
-        ORDER BY m.scheduled_time DESC
-    ";
-    $allMatches = $pdo->query($allMatchesQuery)->fetchAll();
-    
-    // Ensure $allMatches is always an array
-    if ($allMatches === false) {
-        $allMatches = [];
-    }
-    
-    // Get all tournaments for filter dropdown
-    $tournamentsQuery = "SELECT id, name FROM tournaments ORDER BY name";
-    $tournaments = $pdo->query($tournamentsQuery)->fetchAll();
+    // Get tournaments for filter
+    $tournaments = $pdo->query("SELECT id, name FROM tournaments ORDER BY name")->fetchAll();
     
 } catch (PDOException $e) {
     error_log("Database error: " . $e->getMessage());
     $matches = [];
-    $allMatches = [];
     $tournaments = [];
 }
 ?>
@@ -278,121 +237,16 @@ try {
         }
         
         .match-card {
-            border: none;
-            border-radius: 15px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            background: white;
-        }
-        
-        .match-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        }
-        
-        .video-container {
-            position: relative;
-            width: 100%;
-            background: #000;
-            border-radius: 10px;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            margin-bottom: 30px;
             overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-        
-        .video-wrapper {
             position: relative;
-            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
-            height: 0;
-            overflow: hidden;
         }
-        
-        .video-wrapper iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: 0;
-        }
-        
-        .no-video {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 4rem 2rem;
-            text-align: center;
-            border-radius: 15px;
-        }
-        
-        .no-video i {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-        }
-        
-        .video-container {
-            position: relative;
-            width: 100%;
-            background: #000;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        }
-        
-        .video-wrapper {
-            position: relative;
-            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
-            height: 0;
-            overflow: hidden;
-        }
-        
-        .video-wrapper iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: 0;
-        }
-        
-        .match-info {
-            background: white;
-            border-radius: 15px;
-            padding: 2rem;
-            margin-top: 2rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        
-        .team-logo {
-            width: 80px;
-            height: 80px;
-            object-fit: cover;
-            border-radius: 50%;
-            border: 3px solid var(--primary-color);
-        }
-        
-        .score-display {
-            font-size: 3rem;
-            font-weight: bold;
-            color: var(--primary-color);
-            text-align: center;
-        }
-        
-        .status-badge {
-            font-size: 1rem;
-            padding: 0.5rem 1rem;
-            border-radius: 25px;
-        }
-        
-        .live-indicator {
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-
-        
         
         .match-card::before {
             content: '';
@@ -633,16 +487,16 @@ try {
                     </li>
                 </ul>
                 <div class="d-flex align-items-center">
-                    <?php if (isLoggedIn()): ?>
+                    <?php if ($isLoggedIn): ?>
                         <div class="dropdown">
                             <a class="btn btn-outline-light dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                                <i class="fas fa-user me-1"></i> <?php echo htmlspecialchars(getUsername()); ?>
+                                <i class="fas fa-user me-1"></i> <?php echo htmlspecialchars($username); ?>
                             </a>
                             <ul class="dropdown-menu">
                                 <li><a class="dropdown-item" href="profile.php">Profile</a></li>
-                                <?php if (getUserRole() === 'admin' || getUserRole() === 'super_admin'): ?>
+                                <?php if ($userRole === 'admin' || $userRole === 'super_admin'): ?>
                                     <li><a class="dropdown-item" href="admin_dashboard.php">Admin Dashboard</a></li>
-                                <?php elseif (getUserRole() === 'user'): ?>
+                                <?php elseif ($userRole === 'user'): ?>
                                     <li><a class="dropdown-item" href="user_dashboard.php">User Dashboard</a></li>
                                 <?php endif; ?>
                                 <li><hr class="dropdown-divider"></li>
@@ -661,8 +515,8 @@ try {
     <!-- Hero Section -->
     <section class="hero-section">
         <div class="container">
-            <h1 class="display-4 fw-bold mb-4">Video Archive</h1>
-            <p class="lead mb-4">Watch previous live stream recordings and browse our complete video library</p>
+            <h1 class="display-4 fw-bold mb-4">All Matches</h1>
+            <p class="lead mb-4">Watch live matches, view results, and stay updated with the latest esports action</p>
         </div>
     </section>
 
@@ -671,11 +525,13 @@ try {
         <div class="filter-section">
             <form method="GET" class="row g-3">
                 <div class="col-md-3">
-                    <label for="status" class="form-label">Match Type</label>
+                    <label for="status" class="form-label">Status</label>
                     <select class="form-select" id="status" name="status">
-                        <option value="">All Videos</option>
-                        <option value="completed" <?php echo $status === 'completed' ? 'selected' : ''; ?>>Completed Matches</option>
-                        <option value="live" <?php echo $status === 'live' ? 'selected' : ''; ?>>Live Recordings</option>
+                        <option value="">All Status</option>
+                        <option value="scheduled" <?php echo $status === 'scheduled' ? 'selected' : ''; ?>>Scheduled</option>
+                        <option value="live" <?php echo $status === 'live' ? 'selected' : ''; ?>>Live</option>
+                        <option value="completed" <?php echo $status === 'completed' ? 'selected' : ''; ?>>Completed</option>
+                        <option value="cancelled" <?php echo $status === 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
                     </select>
                 </div>
                 <div class="col-md-3">
@@ -692,7 +548,7 @@ try {
                 <div class="col-md-4">
                     <label for="search" class="form-label">Search</label>
                     <input type="text" class="form-control" id="search" name="search" 
-                           placeholder="Search video recordings..." value="<?php echo htmlspecialchars($search); ?>">
+                           placeholder="Search teams or tournaments..." value="<?php echo htmlspecialchars($search); ?>">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">&nbsp;</label>
@@ -705,172 +561,89 @@ try {
             </form>
         </div>
 
-        <!-- Video Statistics -->
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h3 class="text-danger"><?php echo count($matches); ?></h3>
-                        <small class="text-muted">Total Videos</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h3 class="text-success"><?php echo count(array_filter($matches, fn($m) => $m['status'] === 'completed')); ?></h3>
-                        <small class="text-muted">Match Recordings</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h3 class="text-primary"><?php echo count(array_unique(array_column($matches, 'tournament_name'))); ?></h3>
-                        <small class="text-muted">Tournaments</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-         <!-- Table View Section -->
-         <div class="table-responsive mt-5">
-            <h5 class="mb-3"><i class="fas fa-list me-2"></i>All Matches</h5>
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th><i class="fas fa-users me-1"></i>Teams</th>
-                        <th><i class="fas fa-info-circle me-1"></i>Status</th>
-                        <th><i class="fas fa-calendar me-1"></i>Scheduled</th>
-                        <th><i class="fas fa-video me-1"></i>Video</th>
-                        <th><i class="fas fa-cog me-1"></i>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($allMatches as $m): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($m['team1_name'] . ' vs ' . $m['team2_name']); ?></td>
-                        <td>
-                            <?php 
-                            $statusClass = '';
-                            switch($m['status']) {
-                                case 'live': $statusClass = 'text-danger'; break;
-                                case 'completed': $statusClass = 'text-success'; break;
-                                case 'scheduled': $statusClass = 'text-warning'; break;
-                                case 'cancelled': $statusClass = 'text-secondary'; break;
-                            }
-                            ?>
-                            <span class="<?php echo $statusClass; ?>"><?php echo htmlspecialchars(ucfirst($m['status'])); ?></span>
-                        </td>
-                        <td><?php echo date('M j, Y g:i A', strtotime($m['scheduled_time'])); ?></td>
-                        <td>
-                            <?php if ($hasVideoUrlColumn && !empty($m['video_url'])): ?>
-                                <a href="watch.php?id=<?php echo $m['id']; ?>" class="badge bg-danger text-decoration-none">
-                                    <i class="fab fa-youtube me-1"></i>Watch Video
-                                </a>
-                            <?php else: ?>
-                                <span class="text-muted">No video</span>
-                            <?php endif; ?>
-                        </td>
-                        <td class="text-end">
-                            <a class="btn btn-sm btn-outline-primary" href="match_details.php?id=<?php echo $m['id']; ?>">
-                                <i class="fas fa-eye me-1"></i>View Details
-                            </a>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    
-        <!-- Video Archive Grid -->
+        <!-- Matches List -->
         <div class="row">
             <?php if (!empty($matches)): ?>
                 <?php foreach ($matches as $match): ?>
-                    <div class="col-lg-6 mb-4">
+                    <div class="col-lg-6 col-xl-4">
                         <div class="card match-card <?php echo $match['status']; ?>">
                             <div class="card-body">
-                                <!-- Video Player Section -->
-                                <div class="video-container">
+                                <!-- Match Header -->
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <span class="badge bg-secondary"><?php echo htmlspecialchars($match['round']); ?></span>
                                     <?php 
-                                    $embedUrl = getYouTubeEmbedUrl($match['video_url'] ?? '');
-                                    if ($embedUrl): 
+                                    $statusClass = '';
+                                    $statusText = '';
+                                    switch($match['status']) {
+                                        case 'live':
+                                            $statusClass = 'bg-danger';
+                                            $statusText = 'LIVE';
+                                            break;
+                                        case 'scheduled':
+                                            $statusClass = 'bg-warning text-dark';
+                                            $statusText = 'SCHEDULED';
+                                            break;
+                                        case 'completed':
+                                            $statusClass = 'bg-success';
+                                            $statusText = 'COMPLETED';
+                                            break;
+                                        case 'cancelled':
+                                            $statusClass = 'bg-secondary';
+                                            $statusText = 'CANCELLED';
+                                            break;
+                                    }
                                     ?>
-                                        <div class="video-wrapper">
-                                            <iframe src="<?php echo htmlspecialchars($embedUrl); ?>?rel=0" 
-                                                    allowfullscreen 
-                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
-                                            </iframe>
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="no-video">
-                                            <i class="fas fa-video-slash"></i>
-                                            <h4>No Video Available</h4>
-                                            <p>This match doesn't have an associated video yet.</p>
-                                        </div>
-                                    <?php endif; ?>
+                                    <span class="badge <?php echo $statusClass; ?> status-badge"><?php echo $statusText; ?></span>
                                 </div>
-                                
-                                <!-- Match Information from watch.php -->
-                                <div class="match-info">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-4 text-center">
-                                            <img src="<?php echo $match['team1_logo'] ?: 'https://placehold.co/80x80'; ?>" class="team-logo mb-2" alt="<?php echo htmlspecialchars($match['team1_name']); ?>">
-                                            <h5 class="mb-0 text-dark"><?php echo htmlspecialchars($match['team1_name']); ?></h5>
-                                        </div>
-                                        <div class="col-md-4 text-center">
-                                            <div class="score-display"><?php echo ($match['score_team1'] ?? 0) . ' - ' . ($match['score_team2'] ?? 0); ?></div>
-                                            <div class="mt-2">
-                                                <?php 
-                                                $statusClass = '';
-                                                $statusText = '';
-                                                switch($match['status']) {
-                                                    case 'live':
-                                                        $statusClass = 'bg-danger live-indicator';
-                                                        $statusText = 'LIVE';
-                                                        break;
-                                                    case 'scheduled':
-                                                        $statusClass = 'bg-warning text-dark';
-                                                        $statusText = 'SCHEDULED';
-                                                        break;
-                                                    case 'completed':
-                                                        $statusClass = 'bg-success';
-                                                        $statusText = 'COMPLETED';
-                                                        break;
-                                                    case 'cancelled':
-                                                        $statusClass = 'bg-secondary';
-                                                        $statusText = 'CANCELLED';
-                                                        break;
-                                                }
-                                                ?>
-                                                <span class="badge <?php echo $statusClass; ?> status-badge"><?php echo $statusText; ?></span>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4 text-center">
-                                            <img src="<?php echo $match['team2_logo'] ?: 'https://placehold.co/80x80'; ?>" class="team-logo mb-2" alt="<?php echo htmlspecialchars($match['team2_name']); ?>">
-                                            <h5 class="mb-0 text-dark"><?php echo htmlspecialchars($match['team2_name']); ?></h5>
-                                        </div>
+
+                                <!-- Teams and Score -->
+                                <div class="row align-items-center mb-3">
+                                    <div class="col-4 text-center">
+                                        <img src="<?php echo $match['team1_logo'] ?: 'https://placehold.co/60x60'; ?>" 
+                                             class="team-logo mb-2" alt="<?php echo htmlspecialchars($match['team1_name']); ?>">
+                                        <div class="fw-bold"><?php echo htmlspecialchars($match['team1_name']); ?></div>
                                     </div>
-                                    
-                                    <hr>
-                                    
-                                    <div class="row text-center">
-                                        <div class="col-md-6">
-                                            <h6 class="text-dark"><i class="fas fa-trophy me-2"></i>Tournament</h6>
-                                            <p class="mb-0 text-dark"><?php echo htmlspecialchars($match['tournament_name']); ?></p>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <h6 class="text-dark"><i class="fas fa-calendar me-2"></i>Date & Time</h6>
-                                            <p class="mb-0 text-dark"><?php echo date('M j, Y g:i A', strtotime($match['scheduled_time'])); ?></p>
-                                        </div>
+                                    <div class="col-4 text-center">
+                                        <div class="score-display"><?php echo $match['score_team1'] . ' - ' . $match['score_team2']; ?></div>
+                                        <small class="text-muted">VS</small>
                                     </div>
-                                    
-                                    <?php if (!empty($match['round'])): ?>
-                                    <div class="text-center mt-3">
-                                        <span class="badge bg-primary"><?php echo htmlspecialchars($match['round']); ?></span>
+                                    <div class="col-4 text-center">
+                                        <img src="<?php echo $match['team2_logo'] ?: 'https://placehold.co/60x60'; ?>" 
+                                             class="team-logo mb-2" alt="<?php echo htmlspecialchars($match['team2_name']); ?>">
+                                        <div class="fw-bold"><?php echo htmlspecialchars($match['team2_name']); ?></div>
                                     </div>
+                                </div>
+
+                                <!-- Tournament Info -->
+                                <div class="text-center mb-3">
+                                    <small class="text-muted">
+                                        <i class="fas fa-trophy me-1"></i>
+                                        <?php echo htmlspecialchars($match['tournament_name']); ?>
+                                    </small>
+                                </div>
+
+                                <!-- Match Time -->
+                                <div class="text-center mb-3">
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock me-1"></i>
+                                        <?php echo date('M j, Y g:i A', strtotime($match['scheduled_time'])); ?>
+                                    </small>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="d-grid gap-2">
+                                    <?php if ($match['status'] === 'live'): ?>
+                                        <a href="watch.php?id=<?php echo $match['id']; ?>" class="btn btn-danger">
+                                            <i class="fas fa-play-circle me-1"></i> Watch Live
+                                        </a>
+                                    <?php elseif (!empty($match['video_url'])): ?>
+                                        <a href="watch.php?id=<?php echo $match['id']; ?>" class="btn btn-danger">
+                                            <i class="fab fa-youtube me-1"></i> Watch Video
+                                        </a>
                                     <?php endif; ?>
+                                    <a href="match_details.php?id=<?php echo $match['id']; ?>" class="btn btn-outline-primary">
+                                        <i class="fas fa-info-circle me-1"></i> Match Details
+                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -878,13 +651,14 @@ try {
                 <?php endforeach; ?>
             <?php else: ?>
                 <div class="col-12 text-center py-5">
-                    <i class="fas fa-video fa-3x text-muted mb-3"></i>
-                    <h4>No video recordings found</h4>
-                    <p class="text-muted">No archived videos match your search criteria. Try adjusting your filters.</p>
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <h4>No matches found</h4>
+                    <p class="text-muted">Try adjusting your filters or check back later for new matches.</p>
                     <a href="matches.php" class="btn btn-primary">Clear Filters</a>
                 </div>
             <?php endif; ?>
         </div>
+    </div>
 
     <script>
         $(document).ready(function() {
@@ -895,32 +669,53 @@ try {
             $('#status, #tournament').change(function() {
                 $(this).closest('form').submit();
             });
-
-        });
-        
-        function createParticles() {
-            const particlesContainer = $('.particles');
             
-            for (let i = 0; i < 50; i++) {
-                const particle = $('<div class="particle"></div>');
-                const size = Math.random() * 4 + 1;
-                const posX = Math.random() * 100;
-                const posY = Math.random() * 100;
-                const opacity = Math.random() * 0.5 + 0.2;
-                const animationDelay = Math.random() * 20;
+            // Add hover effects
+            $('.match-card').hover(
+                function() { $(this).addClass('shadow-lg'); },
+                function() { $(this).removeClass('shadow-lg'); }
+            );
+            
+            // Create particles function
+            function createParticles() {
+                const particlesContainer = $('#particles');
+                const particleCount = 15;
                 
-                particle.css({
-                    width: size + 'px',
-                    height: size + 'px',
-                    left: posX + 'vw',
-                    top: posY + 'vh',
-                    opacity: opacity,
-                    animationDelay: animationDelay + 's'
-                });
-                
-                particlesContainer.append(particle);
+                for (let i = 0; i < particleCount; i++) {
+                    const size = Math.random() * 20 + 10;
+                    const posX = Math.random() * 100;
+                    const posY = Math.random() * 100;
+                    const animationDelay = Math.random() * 15;
+                    const opacity = Math.random() * 0.2 + 0.1;
+                    
+                    const particle = $('<div class="particle"></div>').css({
+                        width: size + 'px',
+                        height: size + 'px',
+                        left: posX + 'vw',
+                        top: posY + 'vh',
+                        opacity: opacity,
+                        animationDelay: animationDelay + 's'
+                    });
+                    
+                    particlesContainer.append(particle);
+                }
             }
-        }
+        });
     </script>
+    <!-- Chat Integration -->
+    <?php if ($isLoggedIn): ?>
+    <script src="polling_chat_client.js"></script>
+    <script>
+        // Initialize chat for matches page
+        document.addEventListener('DOMContentLoaded', function() {
+            const userId = <?= $_SESSION['user_id'] ?>;
+            const username = '<?= htmlspecialchars($_SESSION['username']) ?>';
+            const userRole = '<?= htmlspecialchars($_SESSION['role']) ?>';
+            
+            const chatClient = new PollingChatClient('chat_api.php', 1, userId, username, userRole);
+            // Chat UI can be added to specific containers as needed
+        });
+    </script>
+    <?php endif; ?>
 </body>
 </html>

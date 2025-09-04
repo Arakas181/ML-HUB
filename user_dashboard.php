@@ -648,7 +648,7 @@ try {
                         <a class="nav-link" href="index.php">Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="manage_matches.php">Matches</a>
+                        <a class="nav-link" href="matches.php">Matches</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="tournaments.php">Tournaments</a>
@@ -697,11 +697,6 @@ try {
                         <li class="nav-item">
                             <a class="nav-link" href="my_matches.php">
                                 <i class="fas fa-gamepad me-2"></i> My Matches
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="manage_matches.php">
-                                <i class="fas fa-video me-2"></i> Watch Matches
                             </a>
                         </li>
                         <li class="nav-item">
@@ -795,8 +790,8 @@ try {
                                 <i class="fas fa-users fa-3x text-muted mb-3"></i>
                                 <h6>You're not part of any squad</h6>
                                 <p class="text-muted">Join a squad to team up with other players and participate in squad tournaments!</p>
-                                <a href="manage_matches.php" class="btn btn-primary">
-                                    <i class="fas fa-gamepad me-2"></i>Watch Matches
+                                <a href="join_squad.php" class="btn btn-primary">
+                                    <i class="fas fa-plus me-2"></i>Join a Squad
                                 </a>
                             </div>
                         <?php endif; ?>

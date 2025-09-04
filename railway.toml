@@ -1,0 +1,21 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "/usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[environments.production]
+[environments.production.variables]
+APP_ENV = "production"
+DB_HOST = "${{MYSQL.MYSQL_URL}}"
+REDIS_URL = "${{REDIS.REDIS_URL}}"
+JWT_SECRET = "${{JWT_SECRET}}"
+
+[environments.staging]
+[environments.staging.variables]
+APP_ENV = "staging"

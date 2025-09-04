@@ -1,0 +1,72 @@
+# Optimized Dockerfile for Free Hosting
+FROM php:8.2-apache
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libzip-dev \
+    libonig-dev \
+    libxml2-dev \
+    git \
+    curl \
+    zip \
+    unzip \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+        pdo \
+        pdo_mysql \
+        mysqli \
+        mbstring \
+        xml \
+        gd \
+        opcache \
+        zip
+
+# Install Redis extension (optional for fallback)
+RUN pecl install redis && docker-php-ext-enable redis || true
+
+# Enable Apache mod_rewrite
+RUN a2enmod rewrite headers
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy composer files and install PHP dependencies
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-scripts
+
+# Copy package files and install Node.js dependencies
+COPY package.json package-lock.json ./
+RUN npm ci --only=production
+
+# Copy application code
+COPY . .
+
+# Build frontend assets
+RUN npm run build
+
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html
+
+# Copy Apache configuration
+COPY docker/apache.conf /etc/apache2/sites-available/000-default.conf
+
+# Create health check endpoint
+RUN echo '<?php echo json_encode(["status" => "healthy", "timestamp" => date("c")]);' > /var/www/html/health.php
+
+# Expose port
+EXPOSE 80
+
+# Start Apache
+CMD ["apache2-foreground"]

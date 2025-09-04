@@ -75,7 +75,7 @@ try {
 				</ul>
 				<div class="mt-3">
 					<?php if ($match['status'] === 'live'): ?>
-						<a href="matches.php" class="btn btn-danger"><i class="fas fa-play me-1"></i> Watch Live</a>
+						<a href="watch.php?id=<?php echo $match['id']; ?>" class="btn btn-danger"><i class="fas fa-play me-1"></i> Watch Live</a>
 					<?php endif; ?>
 				</div>
 			</div>

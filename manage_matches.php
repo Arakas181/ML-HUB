@@ -2,13 +2,10 @@
 session_start();
 require_once 'config.php';
 
-if (!isset($_SESSION['user_id'])) {
-	header('Location: login.php');
+if (!isset($_SESSION['user_id']) || ($_SESSION['role'] !== 'admin' && $_SESSION['role'] !== 'super_admin')) {
+	header('Location: admin_login.php');
 	exit();
 }
-
-$userRole = $_SESSION['role'];
-$isAdmin = ($userRole === 'admin' || $userRole === 'super_admin');
 
 // Ensure video_url column exists
 $hasVideoUrlColumn = false;
@@ -27,7 +24,7 @@ try {
 // Handle create match
 $success = '';
 $error = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_match']) && $isAdmin) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_match'])) {
 	$tournament_id = (int)($_POST['tournament_id'] ?? 0);
 	$team1_id = (int)($_POST['team1_id'] ?? 0);
 	$team2_id = (int)($_POST['team2_id'] ?? 0);
@@ -309,7 +306,7 @@ try {
 	<nav class="navbar navbar-expand-lg navbar-dark">
 		<div class="container">
 			<a class="navbar-brand" href="admin_dashboard.php">
-				<i></i>Matches
+				<i class="fas fa-shield-alt me-2"></i>Admin Panel
 			</a>
 			<div class="navbar-nav ms-auto">
 				<a href="admin_dashboard.php" class="nav-link">
@@ -325,7 +322,8 @@ try {
 	<div class="container my-4">
 		<!-- Admin Header -->
 		<div class="admin-header">
-			<h2><i class="fas fa-gamepad me-2"></i>watch previous streams</h2>
+			<h2><i class="fas fa-gamepad me-2"></i>Manage Matches</h2>
+			<p class="mb-0">Create and manage tournament matches and competitions</p>
 		</div>
 		
 		<!-- Messages -->
@@ -342,7 +340,6 @@ try {
 			</div>
 		<?php endif; ?>
 
-		<?php if ($isAdmin): ?>
 		<div class="card mb-4">
 			<div class="card-header">
 				<h5 class="mb-0"><i class="fas fa-plus me-2"></i>Create New Match</h5>
@@ -411,8 +408,6 @@ try {
 				</form>
 			</div>
 		</div>
-		<?php endif; ?>
-		
 		<div class="table-responsive">
 			<h5 class="mb-3"><i class="fas fa-list me-2"></i>All Matches</h5>
 			<table class="table table-striped">
@@ -433,7 +428,7 @@ try {
 						<td><?php echo date('M j, Y g:i A', strtotime($m['scheduled_time'])); ?></td>
 						<td>
 							<?php if (!empty($m['video_url'])): ?>
-								<a href="matches.php" class="btn btn-sm btn-danger">
+								<a href="watch.php?id=<?php echo $m['id']; ?>" class="btn btn-sm btn-danger">
 									<i class="fab fa-youtube me-1"></i>Watch
 								</a>
 							<?php else: ?>

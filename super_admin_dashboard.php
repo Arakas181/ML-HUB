@@ -310,7 +310,6 @@ try {
 						</li>
 						<li class="nav-item"><a class="nav-link" href="manage_admins.php"><i class="bi bi-shield-lock me-2"></i>Manage Admins</a></li>
 						<li class="nav-item"><a class="nav-link" href="system_settings.php"><i class="bi bi-gear me-2"></i>System Settings</a></li>
-						<li class="nav-item"><a class="nav-link" href="matches.php"><i class="bi bi-play-circle me-2"></i>Watch Matches</a></li>
 						<li class="nav-item"><a class="nav-link" href="admin_dashboard.php"><i class="bi bi-layout-text-sidebar me-2"></i>Admin Dashboard</a></li>
 					</ul>
 				</div>
